@@ -33,17 +33,16 @@ again on the same batch keep its slot.
 2. **A whole reference.** `GET /stewardship/{reference}/stamps`: walk the
    tree as stewardship does and report, for each of the node's own batches,
    how many of the tree's chunks it stamps, and how many chunks none of them
-   stamp. With each batch, its remaining balance per chunk (`value` minus
-   the chain's `totalAmount`) and `batchTTL`.
+   stamp.
 
 Both answer from the node's own records. Nothing is asked of other nodes,
 and the protocol does not change.
 
-### Time is an estimate
-
-Please report the exact quantities (the balance per chunk and the current
-price) beside `batchTTL`, and label the time as an estimate: it moves with
-the storage price.
+The answers name batches and nothing about time. How long a batch lasts the
+caller works out from what the node already serves: the batch's `value`
+(`GET /batches/{id}`) and the chain's `totalAmount` and `currentPrice`
+(`GET /chainstate`). That is an estimate, since the price moves, and it
+stays with the caller.
 
 ### Privacy
 
