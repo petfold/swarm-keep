@@ -38,6 +38,9 @@ loopmarket and ontodag data off batch `c931c8a5…` (expires about
 - **Time left is an estimate.** Say "about", and show the exact balance per
   chunk beside it.
 - **Re-stamp through the batch's own node**, onto immutable batches only.
+- **Ask only the owner's node about its own batches.** A stamp links content
+  to its uploader's address, so never ask other nodes, or build anything
+  that asks them, which batch stamps a chunk (Peter, 2026-10-29).
 - **Single-owner chunks go to `POST /soc`**, never `POST /chunks`, which
   stores a small one as a content-addressed chunk under another address.
 - **The format is a contract.** A change to `docs/FORMAT.md` that a reader

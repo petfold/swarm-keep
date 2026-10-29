@@ -75,7 +75,7 @@ func (w *Whereabouts) Text(out io.Writer) {
 		fmt.Fprintf(out, "%s: NOT retrievable now\n", w.Ref)
 	}
 	if len(w.Kept) == 0 {
-		fmt.Fprintln(out, "No keep-list keeps it, so nothing records its batch. A node cannot say which batch stamps a chunk yet (docs/upstream/node-postage-info.md).")
+		fmt.Fprintln(out, "No keep-list keeps it, so nothing here records its batch. To keep it, add it to a keep-list and rotate it onto your own batch.")
 		return
 	}
 	for _, p := range w.Kept {

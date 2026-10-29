@@ -40,6 +40,10 @@ Peter, 2026-10-29:
   service.
 - **Outreach** to Bee, Ant, Freedom and Solar Punk's File Manager team after
   the first real rotation, with the tool to show.
+- **Privacy: ask only the owner's node about its own batches.** A stamp
+  links content to its uploader, so swarm-keep never asks other nodes which
+  batch stamps a chunk, and the ask to Bee and Ant is for the owner's own
+  records only ([upstream/node-postage-info.md](upstream/node-postage-info.md)).
 - **swarmfs writes keep-list entries** for Python projects, and **holdings
   reads swarm-keep's times** per file. Neither becomes a second rotation
   engine.
@@ -98,8 +102,15 @@ Which batch, from these sources:
 2. later, other tools' records: Freedom's publish history (a reference and a
    batch per publication), swarmfs's journal (each root's batch and time at
    confirmation), the File Manager's drives (one batch each);
-3. the node, once it can say: no node API returns a chunk's stamp today
-   ([upstream/node-postage-info.md](upstream/node-postage-info.md)).
+3. the node that owns the batch, once it can say: it records every chunk it
+   stamps, per batch, but no API returns that record yet
+   ([upstream/node-postage-info.md](upstream/node-postage-info.md)). With
+   it, `rotate` could also prove that every chunk landed on the new batch;
+   today it shows that the content is retrievable.
+
+Only the owner's node is asked. Which batch stamps someone else's content
+is theirs to know: a stamp leads to the uploader's address. To keep such
+content, stamp it onto your own batch.
 
 How long: `GET /batches/{id}` gives any batch's `value` (not only the node's
 own batches), and `/chainstate` the chain's `totalAmount` and
@@ -133,7 +144,8 @@ place for warnings (its issues #589 and #759), Swarm Desktop, holdings.
 
 - **Bee 2.8.3:** stewardship re-uploads onto a named batch;
   `/batches/{id}` for any batch; retrieval stopped carrying a chunk's stamp
-  in 1.17.0.
+  in 1.17.0, when retrieved chunks moved to a cache that keeps no stamps.
+  The stamp issuer records every chunk it stamps (`postage.StampItem`).
 - **Freedom and Ant:** Freedom's node is Ant (Rust), with Bee's API,
   stewardship included. Freedom's publish history records each
   publication's reference and batch; its publish card warns under 7 days;

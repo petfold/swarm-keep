@@ -1,67 +1,81 @@
-# Asks to the nodes: which batches keep a file alive
+# Asks to the nodes: which of my batches keep a file alive
 
 Drafts for an issue on Bee (ethersphere/bee) and one on Ant
-(solardev-xyz/ant). Decided 2026-10-29: file them after swarm-keep's first
-real rotation, with the tool to show.
+(solardev-xyz/ant). Decided on 2026-10-29: ask only the uploader's own node
+about its own batches, for the privacy reasons below, and file both after
+swarm-keep's first real rotation, with the tool to show.
 
 ---
 
-## API: which postage batches cover a chunk or a file, and how long they last
+## API: which of this node's batches stamp the chunks under a reference
 
 ### Problem
 
-Someone who wants to keep content alive has to know which batches stamp it.
-Today only the uploader's own records can say, and only for what they uploaded
-themselves. After a re-upload onto a new batch (`PUT /stewardship`), or for
-content someone else published (a site behind an ENS name, a dataset), nothing
-tells which batch keeps it alive, or when the network may drop it.
+Someone who keeps content alive has to know which of their batches stamp
+it, and, after re-uploading it onto a new batch with `PUT /stewardship`,
+whether all of it moved. Today the node says only whether content is
+retrievable (`GET /stewardship`), not which batch keeps it. So tools keep
+their own records of what went where (swarm-keep's keep-lists, Freedom's
+publish history) and have no way to check those records against the node.
 
-### What nodes already hold
+### The node already knows
 
-- A storer keeps each chunk's stamp per batch in its reserve
-  (`pkg/storer`, `chunkstamp.LoadWithBatchID`).
-- The retrieval protocol's `Delivery` message has a `Stamp` field
-  (`pkg/retrieval/pb/retrieval.proto`). Bee filled it until 1.17.0 and has
-  not since the new storage layer (#3936, June 2023).
-- `GET /batches/{batch_id}` already gives any batch's `value` and `batchTTL`,
-  and `/chainstate` the current price and `totalAmount`.
+A node's stamp issuer records every chunk it stamps, per batch:
+`postage.StampItem` (batch ID, chunk address, index, timestamp) in
+`pkg/postage/stampissuer.go`. It is the record that lets a chunk stamped
+again on the same batch keep its slot.
 
 ### Ask
 
-1. **A chunk's stamps.** `GET /chunks/{address}/stamps` (or a response
-   header on `GET /chunks`): the stamps the node knows for the chunk (batch
-   ID, index, timestamp, signature), from its own store and, when it
-   retrieves the chunk, from the storer.
-2. **A file's coverage.** `GET /stewardship/{reference}/stamps`: walk the
-   tree as `isRetrievable` does and report, for each batch, how many of the
-   tree's chunks it stamps, with the batch's remaining balance per chunk and
-   `batchTTL`; and how many chunks came back with no stamp.
-3. **Stamps in retrieval.** For 1 and 2 to work for content the node does
-   not hold, a delivery carries the storer's stamp (or stamps) for the chunk
-   again.
+1. **One chunk.** `GET /stamps/{batch_id}/chunks/{address}`: whether this
+   node stamped the chunk with its batch, with the index and timestamp; 404
+   when it did not.
+2. **A whole reference.** `GET /stewardship/{reference}/stamps`: walk the
+   tree as stewardship does and report, for each of the node's own batches,
+   how many of the tree's chunks it stamps, and how many chunks none of them
+   stamp. With each batch, its remaining balance per chunk (`value` minus
+   the chain's `totalAmount`) and `batchTTL`.
+
+Both answer from the node's own records. Nothing is asked of other nodes,
+and the protocol does not change.
 
 ### Time is an estimate
 
-Please report the exact quantities (the batch's remaining balance per chunk,
-`value` minus `totalAmount`, and the current price) beside `batchTTL`, and
-label the time as an estimate: it moves with the storage price.
+Please report the exact quantities (the balance per chunk and the current
+price) beside `batchTTL`, and label the time as an estimate: it moves with
+the storage price.
 
-### Questions
+### Privacy
 
-- Why did the stamp leave the delivery: bandwidth, or privacy? A stamp links
-  a chunk to a batch, and so to every other chunk of the same batch; batch
-  owners are public on chain. If that link is the concern, an opt-in, or
-  answers limited to the node's own batches, would still cover 1 for
-  uploaders.
-- With several stamps for one chunk (a re-upload onto a new batch keeps the
-  old stamp until its batch expires), should the storer return all of them,
-  or the one that lasts longest?
+- A stamp links a chunk to a batch, through the batch to its owner's address
+  on chain, and to every other chunk stamped by the same batch, encrypted
+  ones included.
+- Today a chunk's stamp reaches the nodes that store it and their neighbours,
+  and a few stamps appear on chain in storage-reward claims. Linking content
+  to its uploader takes a node in the right neighbourhood.
+- These endpoints answer only the batch's owner, about chunks it stamped
+  itself, through its own API, like `/stamps` and `/wallet`. They tell no one
+  anything they did not already know. A gateway that stamps uploads for
+  others should keep them closed, as it keeps `/stamps` closed.
+- Deliberately not asked:
+  - **Stamps in retrieval.** The `Delivery.Stamp` field of the retrieval
+    protocol has been empty since 1.17.0. Filling it would let anyone who
+    downloads content link it to its uploader. As we read #3936, it was
+    emptied because retrieved chunks now go to a cache that keeps no stamps,
+    not for privacy; but the privacy cost of filling it again is the reason
+    not to.
+  - **Storers reporting a chunk's batch or expiry to anyone.** Even an
+    expiry date without the batch nearly identifies the batch, and a storer
+    could answer falsely.
+
+Content someone else uploaded needs neither: whoever wants it kept stamps it
+onto their own batch.
 
 ---
 
 ## Ant
 
 The same endpoints, for parity with Bee, so tools work against both nodes.
-Freedom already shows a batch's time on the publish card and the storage
-screen; with these, it could also say, for any page, "kept by batch X until
-about Y".
+Ant issues stamps itself, so it can keep the same record. Freedom could
+then show, for each of the user's own publications, which batch keeps it
+and until about when.
