@@ -43,7 +43,7 @@ Peter, 2026-10-29:
 - **Privacy: ask only the owner's node about its own batches.** A stamp
   links content to its uploader, so swarm-keep never asks other nodes which
   batch stamps a chunk, and the ask to Bee and Ant is for the owner's own
-  records only ([upstream/node-postage-info.md](upstream/node-postage-info.md)).
+  records only (drafts for [Bee](upstream/bee.md) and [Ant](upstream/ant.md)).
 - **swarmfs writes keep-list entries** for Python projects, and **holdings
   reads swarm-keep's times** per file. Neither becomes a second rotation
   engine.
@@ -104,7 +104,7 @@ Which batch, from these sources:
    confirmation), the File Manager's drives (one batch each);
 3. the node that owns the batch, once it can say: it records every chunk it
    stamps, per batch, but no API returns that record yet
-   ([upstream/node-postage-info.md](upstream/node-postage-info.md)). With
+   (drafts for [Bee](upstream/bee.md) and [Ant](upstream/ant.md)). With
    it, `rotate` could also prove that every chunk landed on the new batch;
    today it shows that the content is retrievable.
 

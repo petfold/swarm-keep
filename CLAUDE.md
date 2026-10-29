@@ -10,7 +10,7 @@ runs out. This file holds what is true now and the rules; the reasons are in
 
 1. [docs/DESIGN.md](docs/DESIGN.md): what it is, the decisions, the ecosystem
 2. [docs/FORMAT.md](docs/FORMAT.md): the keep-list format, normative
-3. [docs/upstream/node-postage-info.md](docs/upstream/node-postage-info.md): what we ask of Bee and Ant
+3. [docs/upstream/bee.md](docs/upstream/bee.md) and [ant.md](docs/upstream/ant.md): the issues we ask Bee and Ant for, to file after the first real rotation
 
 ## Where we are
 
@@ -18,10 +18,12 @@ v0.1 in progress. Built: the format (`internal/keeplist`), the node client
 (`internal/bee`), feeds (`internal/feed`), `check`, `where` and `rotate`
 (`internal/keep`, `cmd/swarm-keep`), desktop notifications
 (`internal/notify`). `rotate` ran live on 2026-10-29: the loopmarket page's
-list onto its own batch, 9 targets, all verified, no new slots. Next:
-recordstore's exporter, our keep-lists, then the first rotation of the
-loopmarket and ontodag data off batch `c931c8a5…` (expires about
-2026-11-09) onto a batch Peter buys.
+list onto its own batch, 9 targets, all verified, no new slots.
+recordstore's exporter is released (`python3 -m recordstore refs`, 0.26.0)
+and our keep-lists use it (46,947 addresses). Next, on 2026-11-04 (Peter's
+option A): the first real rotation, off batch `c931c8a5…` (expires about
+2026-11-09) onto a depth-20 immutable batch bought for three weeks; then
+the issues in `docs/upstream/`.
 
 ## Rules
 
