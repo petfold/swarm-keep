@@ -277,3 +277,46 @@ func TestRotateFailures(t *testing.T) {
 		t.Errorf("%s", text.String())
 	}
 }
+
+func TestRotateStampsEachAddressOnce(t *testing.T) {
+	// A third list keeps the store's tree and the site's page again, the
+	// page without its redundancy: each is stamped once, at the highest
+	// level any item names, and its outcome counts for every list.
+	n, c, ls, _ := rotation(t)
+	page, tree := hexOf(0xe5, 32), hexOf(0xf6, 32)
+	copied := &keeplist.List{Keep: 1, Name: "copy", Items: []keeplist.Item{{Name: "tree", Ref: tree}, {Name: "page", Ref: page}}}
+	ls = append(ls, copied)
+	rot, err := c.Rotate(context.Background(), ls, keep.RotateOptions{To: fresh, Verify: keep.VerifyAll, Workers: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !rot.OK() || rot.Addresses != 9 || rot.Lists[2].Verified != 2 {
+		t.Errorf("%+v", rot)
+	}
+	seen := map[string]int{}
+	for _, q := range n.Requests {
+		seen[q]++
+	}
+	for _, r := range []string{page, tree} {
+		if k := seen["PUT /stewardship/"+r]; k != 1 {
+			t.Errorf("%s stamped %d times", r[:4], k)
+		}
+		if k := seen["GET /stewardship/"+r]; k != 1 {
+			t.Errorf("%s verified %d times", r[:4], k)
+		}
+	}
+	if lvl := n.Redundancy[page]; lvl != "2" {
+		t.Errorf("the page went up with redundancy %q, want 2", lvl)
+	}
+
+	// A shared address that fails fails every list that keeps it.
+	n, c, ls, _ = rotation(t)
+	n.FailReupload[tree] = true
+	rot, err = c.Rotate(context.Background(), append(ls, copied), keep.RotateOptions{To: fresh, Verify: keep.VerifyAll})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store, dup := rot.Lists[1], rot.Lists[2]; store.Moved || dup.Moved || len(dup.Failed) != 1 || !rot.Lists[0].Moved {
+		t.Errorf("%+v", rot.Lists)
+	}
+}

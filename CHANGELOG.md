@@ -29,3 +29,7 @@
   none stamped two replicas of every root it has.
 - Commands (`cmd`, `walk`) run with `SWARM_KEEP_BEE_URL` set to the node's
   URL.
+- `rotate` stamps and verifies each address once, however many items keep
+  it, at the highest redundancy any of them names; its outcome counts for
+  every list that keeps it. Our lists name 220,021 targets and 46,888
+  addresses: two versions of a pack share most of their blobs.

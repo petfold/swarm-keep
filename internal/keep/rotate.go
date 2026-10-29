@@ -71,6 +71,9 @@ type Rotation struct {
 	Batch  bee.OwnBatch   `json:"batch"`           // before stamping
 	After  *bee.OwnBatch  `json:"after,omitempty"` // after stamping
 	Lists  []ListRotation `json:"lists"`
+	// Addresses is how many trees and chunks were stamped (or would be): each
+	// once, however many items keep it.
+	Addresses int `json:"addresses"`
 	// Stopped says why stamping stopped early, such as a full batch.
 	Stopped string `json:"stopped,omitempty"`
 }
@@ -145,6 +148,26 @@ func (c *Checker) Rotate(ctx context.Context, lists []*keeplist.List, o RotateOp
 		sort.Strings(lr.From)
 		rot.Lists = append(rot.Lists, lr)
 	}
+	// Each address is stamped once, however many items keep it: lists share
+	// blobs (two versions of a pack share most of theirs), and every
+	// re-stamp waits for the network. Its outcome counts for every item
+	// that keeps it, at the highest redundancy any of them names.
+	type work struct {
+		t    Target
+		jobs []int
+	}
+	var works []work
+	at := map[keeplist.Entry]int{}
+	for i, j := range jobs {
+		if w, ok := at[j.t.Entry]; ok {
+			works[w].jobs = append(works[w].jobs, i)
+			works[w].t.Redundancy = max(works[w].t.Redundancy, j.t.Redundancy)
+			continue
+		}
+		at[j.t.Entry] = len(works)
+		works = append(works, work{j.t, []int{i}})
+	}
+	rot.Addresses = len(works)
 	if o.DryRun {
 		return rot, nil
 	}
@@ -164,18 +187,20 @@ func (c *Checker) Rotate(ctx context.Context, lists []*keeplist.List, o RotateOp
 			stop()
 		}
 	}
-	each(stampCtx, len(jobs), o.Workers, func(i int) {
-		j := jobs[i]
-		if err := c.restamp(stampCtx, j.t, o.To); err != nil {
+	each(stampCtx, len(works), o.Workers, func(i int) {
+		w := works[i]
+		if err := c.restamp(stampCtx, w.t, o.To); err != nil {
 			failed.Add(1)
-			fail(j, err)
+			for _, k := range w.jobs {
+				fail(jobs[k], err)
+			}
 		}
 		if o.Progress == nil {
 			done.Add(1)
 			return
 		}
 		progressMu.Lock()
-		o.Progress(int(done.Add(1)), len(jobs), int(failed.Load()))
+		o.Progress(int(done.Add(1)), len(works), int(failed.Load()))
 		progressMu.Unlock()
 	})
 	if rot.Stopped == "" && ctx.Err() != nil {
@@ -200,23 +225,34 @@ func (c *Checker) Rotate(ctx context.Context, lists []*keeplist.List, o RotateOp
 				picks = append(picks, mine[k])
 			}
 		}
-		var verified sync.Map
-		each(ctx, len(picks), o.Workers, func(k int) {
-			j := jobs[picks[k]]
-			missing, err := c.missing(ctx, j.t)
+		// Each picked address is asked for once, as it was stamped once.
+		var asks []int // indexes into works
+		asked := map[int]bool{}
+		for _, k := range picks {
+			if w := at[jobs[k].t.Entry]; !asked[w] {
+				asked[w] = true
+				asks = append(asks, w)
+			}
+		}
+		outcome := make([]error, len(works))
+		each(ctx, len(asks), o.Workers, func(i int) {
+			w := works[asks[i]]
+			missing, err := c.missing(ctx, w.t)
 			switch {
 			case err != nil:
-				fail(j, fmt.Errorf("could not verify: %w", err))
+				outcome[asks[i]] = fmt.Errorf("could not verify: %w", err)
 			case missing:
-				fail(j, errors.New("not retrievable after re-stamping"))
-			default:
-				verified.Store(picks[k], j.list)
+				outcome[asks[i]] = errors.New("not retrievable after re-stamping")
 			}
 		})
-		verified.Range(func(_, li any) bool {
-			rot.Lists[li.(int)].Verified++
-			return true
-		})
+		for _, k := range picks {
+			j := jobs[k]
+			if err := outcome[at[j.t.Entry]]; err != nil {
+				fail(j, err)
+			} else {
+				rot.Lists[j.list].Verified++
+			}
+		}
 	}
 
 	// Record: a list names the new batch only when all of it moved.
@@ -315,6 +351,7 @@ func (r *Rotation) Text(w io.Writer) {
 		fill = fmt.Sprintf("fullest bucket %d of %d, %d before", r.After.Utilization, r.After.BucketCapacity(), r.Batch.Utilization)
 	}
 	fmt.Fprintf(w, "%s onto batch %s (depth %d, %s left, %s)\n", verb, r.To, r.Batch.Depth, left, fill)
+	fmt.Fprintf(w, "  %d addresses (one that several items keep is stamped once)\n", r.Addresses)
 	for _, l := range r.Lists {
 		from := "no batch recorded"
 		if len(l.From) > 0 {
