@@ -18,7 +18,7 @@ as its batch does, whether anyone needs it or not.
   - `check`: for everything kept, which batch, about how long it has left,
     whether it is retrievable; one report, one notification;
   - `where <ref>`: which list keeps a reference, on which batch, for how long;
-  - `rotate` (next): re-stamp the lists onto a new batch, verify, record.
+  - `rotate`: re-stamp the lists onto a new batch, verify, record.
 - **No keys.** Re-stamping copies chunks that are already signed, so
   swarm-keep never holds a feed owner's key.
 
@@ -50,15 +50,45 @@ Peter, 2026-10-29:
   `swarm-postage-batch-id` header re-stamps every chunk of the tree onto that
   batch, with its erasure-coding replicas (Bee's `pkg/steward`; Ant's gateway
   does the same).
-- **Single chunks** (feed updates, chunks only an owner's structure reaches):
-  fetched and posted again with `POST /chunks` and the new batch. Bee
-  accepts a single-owner chunk on its own signature (`pkg/api/chunk.go`).
+- **Single chunks**: fetched and posted again with the new batch. A
+  content-addressed chunk goes to `POST /chunks`; a single-owner chunk (a
+  feed update) to `POST /soc/{owner}/{id}?sig=…`, with the owner, id and
+  signature it carries, so no key is needed. Never a single-owner chunk to
+  `POST /chunks`: Bee reads any body that fits in a chunk as a
+  content-addressed chunk (`pkg/api/chunk.go`) and would store it under
+  another address.
+- **Checking** goes through `GET /stewardship/{ref}` for every target: the
+  node retrieves every chunk from the network, not from its own store, and
+  treats a single-owner chunk as a tree of one chunk (`pkg/traversal`).
 - **Structures only their owner understands** (recordstore stores, swarmblk
   disks): the owner's exporter lists their references (`walk`, `cmd`).
 - **Through the batch's own node.** A batch's stamp issuer lives in the node
   that bought it, so re-stamping goes through that node.
 - **Immutable batches** for kept data: a full mutable batch overwrites its
   oldest chunks.
+
+## Rotation
+
+`swarm-keep rotate -to <batch>`:
+
+1. **Refuses** a batch that is not the node's own (only the node that bought
+   a batch can stamp with it), not usable yet, or mutable.
+2. **Lists** every item of every list before stamping anything; an item
+   that cannot be listed refuses the whole rotation.
+3. **Re-stamps** every target, several at a time. A full bucket (`402`)
+   stops everything.
+4. **Verifies** all, a sample (the default) or none of what moved.
+5. **Records**: a list whose targets all moved and verified names the new
+   batch (FORMAT.md, "Rotation rewrites the list"); one with a failure stays
+   as it was. Each rotation is appended to
+   `$XDG_STATE_HOME/swarm-keep/rotations.jsonl`, with the batch's fill
+   before and after.
+
+Running it again after a failure is safe: Bee's stamp issuer keeps a
+chunk's slot when the chunk is stamped again on the same batch (seen live:
+rotating the market page onto its own batch left the fullest bucket at 24
+of 64). Buying the new batch is not part of it: spending is the owner's
+decision.
 
 ## Which batch, and how long
 
@@ -127,9 +157,9 @@ place for warnings (its issues #589 and #759), Swarm Desktop, holdings.
 
 ## Roadmap
 
-- **v0.1, before 2026-11-09:** the format, `check`, `where`, `rotate`, a
-  recordstore exporter, and the first rotation of the loopmarket and
-  ontodag data off batch `c931c8a5…`.
+- **v0.1, before 2026-11-09:** the format, `check`, `where` and `rotate`
+  (built), a recordstore exporter, and the first rotation of the loopmarket
+  and ontodag data off batch `c931c8a5…`.
 - **Then:** importers (Freedom, swarmfs, File Manager); the status file;
   e-mail and webhooks; reading the chain without a node; `plan` (size a
   batch for a set); buying several batches at once through

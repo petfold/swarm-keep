@@ -48,16 +48,19 @@ type List struct {
 
 // Item is one thing to keep.
 type Item struct {
-	Name     string    `json:"name"`
-	Ref      string    `json:"ref,omitempty"`
-	Chunk    string    `json:"chunk,omitempty"`
-	Feed     *Feed     `json:"feed,omitempty"`
-	List     string    `json:"list,omitempty"`
-	Cmd      []string  `json:"cmd,omitempty"`
-	Walk     []string  `json:"walk,omitempty"`
-	Batch    string    `json:"batch,omitempty"`
-	Versions *Versions `json:"versions,omitempty"`
-	Note     string    `json:"note,omitempty"`
+	Name  string   `json:"name"`
+	Ref   string   `json:"ref,omitempty"`
+	Chunk string   `json:"chunk,omitempty"`
+	Feed  *Feed    `json:"feed,omitempty"`
+	List  string   `json:"list,omitempty"`
+	Cmd   []string `json:"cmd,omitempty"`
+	Walk  []string `json:"walk,omitempty"`
+	// Redundancy is the erasure-coding level the item's trees were uploaded
+	// with: 0 none, 1 medium, 2 strong, 3 insane, 4 paranoid.
+	Redundancy int       `json:"redundancy,omitempty"`
+	Batch      string    `json:"batch,omitempty"`
+	Versions   *Versions `json:"versions,omitempty"`
+	Note       string    `json:"note,omitempty"`
 }
 
 // Feed names a sequence feed.
@@ -234,6 +237,12 @@ func (it *Item) check() error {
 	if it.Versions != nil && it.Feed == nil {
 		return errors.New(`"versions": only with "feed"`)
 	}
+	switch {
+	case it.Redundancy < 0 || it.Redundancy > 4:
+		return fmt.Errorf(`"redundancy": %d, want 0 to 4`, it.Redundancy)
+	case it.Redundancy > 0 && it.Chunk != "":
+		return errors.New(`"redundancy": not with "chunk"`)
+	}
 	if it.Batch != "" {
 		if err := hexOf("batch", it.Batch, 32); err != nil {
 			return err
@@ -340,4 +349,40 @@ func refOf(field, s string) error {
 		return fmt.Errorf("%s %q: want 64 hex digits, or 128 for encrypted content", field, s)
 	}
 	return nil
+}
+
+// Save writes the list back to its file in swarm-keep's layout. It writes a
+// new file beside the old one and renames it over, so a reader never sees
+// half a list.
+func (l *List) Save() error {
+	b, err := json.MarshalIndent(l, "", "  ")
+	if err != nil {
+		return err
+	}
+	b = append(b, '\n')
+	mode := os.FileMode(0o644)
+	if fi, err := os.Stat(l.Path); err == nil {
+		mode = fi.Mode().Perm()
+	}
+	// Not *.json, which LoadDir would read if it were left behind.
+	f, err := os.CreateTemp(filepath.Dir(l.Path), ".swarm-keep-*.tmp")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	if _, err := f.Write(b); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(f.Name(), mode); err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), l.Path)
 }

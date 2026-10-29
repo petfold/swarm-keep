@@ -13,7 +13,7 @@ whether the network still has it. It warns before anything runs out, and
 it will move what you keep onto a new batch, leaving old versions you no
 longer need to expire.
 
-**Status: early.** `check` and `where` work; `rotate` comes next. See the
+**Status: early.** `check`, `where` and `rotate` work. See the
 [design](docs/DESIGN.md).
 
 ## What to keep: a keep-list
@@ -47,6 +47,8 @@ go install github.com/petfold/swarm-keep/cmd/swarm-keep@latest
 swarm-keep check -l my-site.json             # everything kept: batch, time left, retrievable?
 swarm-keep check -notify                     # every list in ~/.config/swarm-keep, with a desktop notification
 swarm-keep where -l my-site.json 2abb4979…   # which list keeps it, on which batch, for how long
+swarm-keep rotate -to 7d2e…  -dry-run        # what would move onto a new batch
+swarm-keep rotate -to 7d2e…  -verify all     # move it, check it, and write the new batch into the lists
 ```
 
 ```
@@ -60,6 +62,10 @@ loopmarket page
 
 The time left is an estimate at today's storage price: sooner if the price
 rises, later if it falls. The balance beside it is exact.
+
+`rotate` moves onto a batch you already bought, from the node that bought
+it; it never buys. A list names the new batch only once everything in it
+has moved and been checked, and running it again after a failure is safe.
 
 `check` exits 0 when everything is fine, 1 when something needs attention
 and 2 when it could not do its job, so it runs from cron as it is; `-json`

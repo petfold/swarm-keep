@@ -15,11 +15,13 @@ runs out. This file holds what is true now and the rules; the reasons are in
 ## Where we are
 
 v0.1 in progress. Built: the format (`internal/keeplist`), the node client
-(`internal/bee`), feeds (`internal/feed`), `check` and `where`
+(`internal/bee`), feeds (`internal/feed`), `check`, `where` and `rotate`
 (`internal/keep`, `cmd/swarm-keep`), desktop notifications
-(`internal/notify`). Next: `rotate`, then recordstore's exporter, then the
-first rotation of the loopmarket and ontodag data off batch `c931c8a5…`
-(expires about 2026-11-09).
+(`internal/notify`). `rotate` ran live on 2026-10-29: the loopmarket page's
+list onto its own batch, 9 targets, all verified, no new slots. Next:
+recordstore's exporter, our keep-lists, then the first rotation of the
+loopmarket and ontodag data off batch `c931c8a5…` (expires about
+2026-11-09) onto a batch Peter buys.
 
 ## Rules
 
@@ -36,6 +38,8 @@ first rotation of the loopmarket and ontodag data off batch `c931c8a5…`
 - **Time left is an estimate.** Say "about", and show the exact balance per
   chunk beside it.
 - **Re-stamp through the batch's own node**, onto immutable batches only.
+- **Single-owner chunks go to `POST /soc`**, never `POST /chunks`, which
+  stores a small one as a content-addressed chunk under another address.
 - **The format is a contract.** A change to `docs/FORMAT.md` that a reader
   of version 1 would misread needs a new `keep` number.
 
@@ -63,11 +67,12 @@ go run ./cmd/swarm-keep check
 ## Layout
 
 ```
-cmd/swarm-keep/     the command: check, where
+cmd/swarm-keep/     the command: check, where, rotate
 internal/keeplist/  the format: reading, checking, entries
 internal/bee/       the node's HTTP API
 internal/feed/      sequence feeds: update addresses, the content an update names
-internal/keep/      expanding items into chunks and trees, checking them
+internal/keep/      expanding items into chunks and trees, checking and rotating them
+internal/beetest/   a fake node for tests
 internal/notify/    desktop notifications
 docs/               design, format, upstream asks
 ```

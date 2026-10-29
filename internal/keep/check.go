@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethersphere/bee/v2/pkg/swarm"
-
 	"github.com/petfold/swarm-keep/internal/bee"
 	"github.com/petfold/swarm-keep/internal/keeplist"
 )
@@ -204,26 +202,16 @@ func (c *Checker) retrievable(ctx context.Context, ts []Target, o Options, r *It
 	}
 }
 
-// missing asks the network whether a target is gone: a tree through the
-// node's stewardship check, which retrieves every chunk from the network; a
-// chunk by fetching it, which the node may answer from its own store.
+// missing asks the network whether a target is gone, through the node's
+// stewardship check, which retrieves every chunk under it from the
+// network, never from the node's own store; a single-owner chunk is a tree
+// of one chunk.
 func (c *Checker) missing(ctx context.Context, t Target) (bool, error) {
-	if t.Kind == keeplist.Tree {
-		ok, err := c.Bee.Retrievable(ctx, t.Addr)
-		if errors.Is(err, bee.ErrNotFound) {
-			return true, nil
-		}
-		return !ok, err
-	}
-	addr, err := swarm.ParseHexAddress(t.Addr)
-	if err != nil {
-		return false, err
-	}
-	_, err = c.Bee.Chunk(ctx, addr)
+	ok, err := c.Bee.Retrievable(ctx, t.Addr, t.Redundancy)
 	if errors.Is(err, bee.ErrNotFound) {
 		return true, nil
 	}
-	return false, err
+	return !ok, err
 }
 
 // sample picks which of n targets to check: all with Deep or when there are

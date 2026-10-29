@@ -34,7 +34,7 @@ not follow it, and names the field.
 |---|---|---|
 | `keep` | required | the format version: `1` |
 | `name` | required | shown in reports and notifications |
-| `batch` | optional | the postage batch (64 hex) that stamps everything in the list now; an item may name its own. `swarm-keep rotate` rewrites it |
+| `batch` | optional | the postage batch (64 hex) that stamps everything in the list now; an item may name its own. `swarm-keep rotate` rewrites it (below) |
 | `versions` | optional | for feeds: how many of the latest versions' content to keep. A number from 1, or `"all"`. Default `2`: the latest and one before it |
 | `warn` | optional | warn when anything is estimated to have less than this left. A number with `h`, `d` or `wk`, such as `36h`, `14d`, `2wk`. Default `14d` |
 | `items` | required | what to keep, below |
@@ -56,6 +56,7 @@ Every item has a `name` and exactly one of `ref`, `chunk`, `feed`, `list` or
 | `list` | a text file of entries, one per line, below. A relative path is read from the keep-list's own directory |
 | `cmd` | a command, as an array of arguments, whose output is entries, one per line |
 | `walk` | with `ref` or `feed`: a command, as an array of arguments, one of which contains `{ref}`. For content the node cannot walk, it prints the entries under that reference. It runs for the `ref`, or for each kept version of the feed |
+| `redundancy` | the erasure-coding level the item's content was uploaded with: `0` none (the default), `1` medium, `2` strong, `3` insane, `4` paranoid. The node needs it to check the content and to re-stamp the root's dispersed replicas. Not with `chunk` |
 | `batch` | the batch that stamps this item, if not the list's |
 | `versions` | with `feed`: overrides the list's `versions` |
 | `note` | free text, ignored |
@@ -90,6 +91,16 @@ the old batch and lasts as long as that batch does.
 
 A command that exits with an error fails the item; swarm-keep never keeps
 half a list without saying so.
+
+## Rotation rewrites the list
+
+`swarm-keep rotate` moves a whole list onto one batch. Once every tree and
+chunk of the list has moved and the ones it checked are retrievable, it
+writes the list back with `batch` set to the new batch and every item's own
+`batch` removed. It writes the file in its own layout (two-space indents,
+fields in the order of this page), through a new file renamed over the old
+one. A program that generates a keep-list should carry `batch` over when it
+writes the list again.
 
 ## Time left is an estimate
 

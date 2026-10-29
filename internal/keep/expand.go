@@ -22,7 +22,8 @@ import (
 // Target is one tree or chunk an item keeps.
 type Target struct {
 	keeplist.Entry
-	Why string // where it comes from, such as "update 3" or "version 2 of 2"
+	Why        string // where it comes from, such as "update 3" or "version 2 of 2"
+	Redundancy int    // a tree's erasure-coding level
 }
 
 // Expander turns items into targets.
@@ -36,7 +37,7 @@ type Expander struct {
 // Expand returns the targets of item it in list l, each once, in the order
 // found.
 func (x *Expander) Expand(ctx context.Context, l *keeplist.List, it *keeplist.Item) ([]Target, error) {
-	var ts targets
+	ts := targets{redundancy: it.Redundancy}
 	switch {
 	case it.Ref != "":
 		ts.add(keeplist.Tree, it.Ref, "")
@@ -177,8 +178,9 @@ func runCommand(ctx context.Context, argv []string, dir string) ([]byte, error) 
 
 // targets collects targets, each once.
 type targets struct {
-	list []Target
-	seen map[keeplist.Entry]bool
+	list       []Target
+	seen       map[keeplist.Entry]bool
+	redundancy int // the item's, for its trees
 }
 
 func (ts *targets) add(k keeplist.Kind, addr, why string) {
@@ -190,7 +192,11 @@ func (ts *targets) add(k keeplist.Kind, addr, why string) {
 		return
 	}
 	ts.seen[e] = true
-	ts.list = append(ts.list, Target{Entry: e, Why: why})
+	t := Target{Entry: e, Why: why}
+	if k == keeplist.Tree {
+		t.Redundancy = ts.redundancy
+	}
+	ts.list = append(ts.list, t)
 }
 
 func (ts *targets) entries(es []keeplist.Entry, why string) {

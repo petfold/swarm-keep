@@ -81,7 +81,9 @@ func TestUsageErrors(t *testing.T) {
 		want string
 	}{
 		{nil, "Usage:"},
-		{[]string{"rotate"}, `unknown command "rotate"`},
+		{[]string{"turn"}, `unknown command "turn"`},
+		{[]string{"rotate", "-l", good}, "-to wants a batch ID"},
+		{[]string{"rotate", "-to", batch, "-verify", "some", "-l", good}, `-verify "some"`},
 		{[]string{"check", "-l", bad}, "128 for encrypted"},
 		{[]string{"check", "-l", good, "-l", other}, `both named "x"`},
 		{[]string{"check"}, "no keep-lists in"},
@@ -95,5 +97,37 @@ func TestUsageErrors(t *testing.T) {
 	}
 	if code, out, _ := runIt("version"); code != 0 || out != "swarm-keep dev\n" {
 		t.Errorf("version: %d %q", code, out)
+	}
+}
+
+func TestRotateCommand(t *testing.T) {
+	n := beetest.New(t)
+	n.Tree(ref, true)
+	n.Batch(batch, 5*24*time.Hour)
+	fresh := strings.Repeat("0f", 32)
+	n.OwnBatch(fresh, 60*24*time.Hour, beetest.Own{Usable: true, Immutable: true, Depth: 20, Room: -1})
+	dir := t.TempDir()
+	p := write(t, dir, "k.json", `{"keep": 1, "name": "site", "batch": "`+batch+`", "items": [{"name": "page", "ref": "`+ref+`"}]}`)
+	log := filepath.Join(dir, "state", "rotations.jsonl")
+
+	if code, out, errs := runIt("rotate", "-bee", n.URL, "-l", p, "-to", batch); code != 2 || !strings.Contains(errs, "is not this node's") || out != "" {
+		t.Errorf("onto someone else's batch: %d\n%s%s", code, out, errs)
+	}
+	if code, out, errs := runIt("rotate", "-bee", n.URL, "-l", p, "-to", fresh, "-dry-run", "-log", log); code != 0 || !strings.Contains(out, "Would rotate") || !strings.Contains(out, "site (from c931c8a5…): 1 trees, 0 chunks\n") {
+		t.Errorf("dry run: %d\n%s%s", code, out, errs)
+	}
+	code, out, errs := runIt("rotate", "-bee", n.URL, "-l", p, "-to", strings.ToUpper(fresh), "-verify", "all", "-log", log, "-json")
+	var rot struct {
+		To    string
+		Lists []struct{ Moved bool }
+	}
+	if err := json.Unmarshal([]byte(out), &rot); err != nil || code != 0 || rot.To != fresh || !rot.Lists[0].Moved || !strings.Contains(errs, "re-stamped 1 of 1 (0 failed)") {
+		t.Errorf("rotate: %d %v\n%s%s", code, err, out, errs)
+	}
+	if b, _ := os.ReadFile(log); strings.Count(string(b), "\n") != 1 { // a dry run is not logged
+		t.Errorf("log: %s", b)
+	}
+	if code, out, _ := runIt("check", "-bee", n.URL, "-l", p); code != 0 || !strings.Contains(out, "about 60 days left") {
+		t.Errorf("check after the rotation: %d\n%s", code, out)
 	}
 }
