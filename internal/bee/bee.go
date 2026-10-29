@@ -264,10 +264,11 @@ func (c *Client) Reupload(ctx context.Context, ref, batch string, redundancy int
 	return nil
 }
 
+// setRedundancy names the level on every request, 0 included: without the
+// header Bee 2.8 re-uploads at level 1 and so stamps two replicas of every
+// root that never had them, and checks at level 4.
 func setRedundancy(req *http.Request, level int) {
-	if level > 0 {
-		req.Header.Set("Swarm-Redundancy-Level", fmt.Sprint(level))
-	}
+	req.Header.Set("Swarm-Redundancy-Level", fmt.Sprint(level))
 }
 
 // Chunk fetches the chunk at addr with GET /chunks/{address} and checks that

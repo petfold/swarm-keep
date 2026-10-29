@@ -24,3 +24,8 @@
   uploaded with, passed to the node when checking and re-stamping.
 - `check` asks the network for single chunks through stewardship too, so a
   copy in the node's own store no longer counts as retrievable.
+- Every check and re-upload names its redundancy level, 0 included. Without
+  the header Bee 2.8 re-uploads at level 1, so rotating a tree uploaded with
+  none stamped two replicas of every root it has.
+- Commands (`cmd`, `walk`) run with `SWARM_KEEP_BEE_URL` set to the node's
+  URL.

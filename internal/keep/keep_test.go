@@ -278,3 +278,14 @@ func TestAbout(t *testing.T) {
 		}
 	}
 }
+
+func TestCommandEnvironment(t *testing.T) {
+	// A command runs with the node's URL, so an exporter reads from the node
+	// swarm-keep asks.
+	_, c := setup(t)
+	l := list(t, `{"keep": 1, "name": "l", "items": [{"name": "env", "cmd": ["sh", "-c", "[ \"$SWARM_KEEP_BEE_URL\" = \"`+c.Bee.URL+`\" ] && echo `+refA+`"]}]}`)
+	ts, err := c.Expand.Expand(context.Background(), l, &l.Items[0])
+	if err != nil || len(ts) != 1 || ts[0].Addr != refA {
+		t.Errorf("%v %+v", err, ts)
+	}
+}

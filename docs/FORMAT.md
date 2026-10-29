@@ -62,7 +62,7 @@ Every item has a `name` and exactly one of `ref`, `chunk`, `feed`, `list` or
 | `list` | a text file of entries, one per line, below. A relative path is read from the keep-list's own directory |
 | `cmd` | a command, as an array of arguments, whose output is entries, one per line |
 | `walk` | with `ref` or `feed`: a command, as an array of arguments, one of which contains `{ref}`. For content the node cannot walk, it prints the entries under that reference. It runs for the `ref`, or for each kept version of the feed |
-| `redundancy` | the erasure-coding level the item's content was uploaded with: `0` none (the default), `1` medium, `2` strong, `3` insane, `4` paranoid. The node needs it to check the content and to re-stamp the root's dispersed replicas. Not with `chunk` |
+| `redundancy` | the erasure-coding level the item's content was uploaded with: `0` none (the default), `1` medium, `2` strong, `3` insane, `4` paranoid. The node needs it to check the content and to re-stamp the root's dispersed replicas. When an item's trees went up at different levels, name the highest: re-stamping then also makes replicas for roots that had none, which costs two chunks a root at level 1 and loses nothing. Not with `chunk` |
 | `batch` | the batch that stamps this item, if not the list's |
 | `versions` | with `feed`: overrides the list's `versions` |
 | `note` | free text for people, kept when the list is rewritten |
@@ -95,8 +95,10 @@ the old batch and lasts as long as that batch does.
 | `chunk <hex>` | one chunk, kept like a `chunk` item |
 | empty, or starting with `#` | ignored |
 
-A command that exits with an error fails the item; swarm-keep never keeps
-half a list without saying so.
+A command runs in the keep-list's directory with `SWARM_KEEP_BEE_URL` set
+to the node swarm-keep asks, so an exporter that reads from a node reads
+from the same one. A command that exits with an error fails the item;
+swarm-keep never keeps half a list without saying so.
 
 ## Rotation rewrites the list
 

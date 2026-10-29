@@ -265,7 +265,11 @@ func (n *Node) stamp(w http.ResponseWriter, addr string, r *http.Request, status
 	if ok && !full {
 		o.Utilization++
 		n.Stamped[addr] = batch
-		if lvl := r.Header.Get("Swarm-Redundancy-Level"); lvl != "" {
+		lvl := r.Header.Get("Swarm-Redundancy-Level")
+		if lvl == "" && r.Method == http.MethodPut {
+			lvl = "1" // Bee's default for a re-upload
+		}
+		if lvl != "" {
 			n.Redundancy[addr] = lvl
 		}
 	}

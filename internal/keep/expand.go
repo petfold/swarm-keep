@@ -30,7 +30,8 @@ type Target struct {
 type Expander struct {
 	Bee *bee.Client
 	// Run runs a command (cmd, walk) and returns its standard output. Nil
-	// runs it with os/exec.
+	// runs it with os/exec, with SWARM_KEEP_BEE_URL set to the node's URL so
+	// an exporter reads from the node swarm-keep asks.
 	Run func(ctx context.Context, argv []string, dir string) ([]byte, error)
 }
 
@@ -147,7 +148,9 @@ func (x *Expander) walk(ctx context.Context, l *keeplist.List, it *keeplist.Item
 func (x *Expander) command(ctx context.Context, l *keeplist.List, argv []string, why string) ([]keeplist.Entry, error) {
 	run := x.Run
 	if run == nil {
-		run = runCommand
+		run = func(ctx context.Context, argv []string, dir string) ([]byte, error) {
+			return runCommand(ctx, argv, dir, x.Bee.URL)
+		}
 	}
 	dir := l.Resolve(".")
 	out, err := run(ctx, argv, dir)
@@ -161,9 +164,10 @@ func (x *Expander) command(ctx context.Context, l *keeplist.List, argv []string,
 	return es, nil
 }
 
-func runCommand(ctx context.Context, argv []string, dir string) ([]byte, error) {
+func runCommand(ctx context.Context, argv []string, dir, beeURL string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "SWARM_KEEP_BEE_URL="+beeURL)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()

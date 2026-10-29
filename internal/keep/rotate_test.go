@@ -131,6 +131,9 @@ func TestRotate(t *testing.T) {
 	if lvl := n.Redundancy[hexOf(0xe5, 32)]; lvl != "2" {
 		t.Errorf("the page went up with redundancy %q, want 2", lvl)
 	}
+	if lvl := n.Redundancy[hexOf(0xf6, 32)]; lvl != "0" {
+		t.Errorf("the tree went up with redundancy %q, want 0 named", lvl)
+	}
 
 	// The lists name the new batch, the item's own batch is gone, and they
 	// still read; the file keeps its mode.
