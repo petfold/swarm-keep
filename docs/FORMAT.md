@@ -12,6 +12,7 @@ not follow it, and names the field.
 {
   "keep": 1,
   "name": "loopmarket",
+  "note": "The market page, its feed and the books it shows. Decided by Peter, 2026-10-29.",
   "batch": "c931c8a5ee8def225abf86a934bbf38ab191f10456f1a684c9cb44f534834359",
   "versions": 2,
   "warn": "14d",
@@ -22,7 +23,7 @@ not follow it, and names the field.
     {"name": "page maker's book",
      "feed": {"owner": "0xe2bfb757…", "topic_string": "loop-e2bfb757"},
      "walk": ["recordstore", "refs", "{ref}"]},
-    {"name": "test data", "list": "test-refs.txt"},
+    {"name": "test data", "list": "test-refs.txt", "note": "until the live tests have their own batch"},
     {"name": "core pack v14", "ref": "9f3b…", "walk": ["recordstore", "refs", "{ref}"]}
   ]
 }
@@ -34,6 +35,7 @@ not follow it, and names the field.
 |---|---|---|
 | `keep` | required | the format version: `1` |
 | `name` | required | shown in reports and notifications |
+| `note` | optional | free text for people: why the list exists, who decided what. swarm-keep keeps it when it rewrites the list |
 | `batch` | optional | the postage batch (64 hex) that stamps everything in the list now; an item may name its own. `swarm-keep rotate` rewrites it (below) |
 | `versions` | optional | for feeds: how many of the latest versions' content to keep. A number from 1, or `"all"`. Default `2`: the latest and one before it |
 | `warn` | optional | warn when anything is estimated to have less than this left. A number with `h`, `d` or `wk`, such as `36h`, `14d`, `2wk`. Default `14d` |
@@ -41,6 +43,10 @@ not follow it, and names the field.
 
 Unknown fields are refused, so a typo never passes silently. A newer format
 gets a new `keep` number.
+
+JSON has no comments, so a keep-list carries its explanations in `note`
+fields, on the list and on each item. They are ordinary fields: every JSON
+reader reads them, and `rotate` writes them back.
 
 ## Items
 
@@ -59,7 +65,7 @@ Every item has a `name` and exactly one of `ref`, `chunk`, `feed`, `list` or
 | `redundancy` | the erasure-coding level the item's content was uploaded with: `0` none (the default), `1` medium, `2` strong, `3` insane, `4` paranoid. The node needs it to check the content and to re-stamp the root's dispersed replicas. Not with `chunk` |
 | `batch` | the batch that stamps this item, if not the list's |
 | `versions` | with `feed`: overrides the list's `versions` |
-| `note` | free text, ignored |
+| `note` | free text for people, kept when the list is rewritten |
 
 ### Feeds
 

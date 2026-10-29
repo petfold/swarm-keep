@@ -18,6 +18,8 @@
   that fully moved, and log the rotation; `-dry-run`, `-verify
   all|sample|none`. It refuses a batch that is not the node's, not usable or
   mutable, and stops at a full bucket.
+- `note` on the list as well as on items: JSON has no comments, so a list
+  explains itself in notes, which `rotate` writes back.
 - `redundancy` on an item: the erasure-coding level its content was
   uploaded with, passed to the node when checking and re-stamping.
 - `check` asks the network for single chunks through stewardship too, so a

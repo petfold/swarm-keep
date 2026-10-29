@@ -46,9 +46,9 @@ func rotation(t *testing.T) (*beetest.Node, *keep.Checker, []*keeplist.List, fee
 	dir := t.TempDir()
 	site := filepath.Join(dir, "site.json")
 	store := filepath.Join(dir, "store.json")
-	os.WriteFile(site, []byte(`{"keep": 1, "name": "site", "batch": "`+short+`", "items": [
+	os.WriteFile(site, []byte(`{"keep": 1, "name": "site", "note": "why we keep it", "batch": "`+short+`", "items": [
 	  {"name": "feed", "feed": {"owner": "`+hex.EncodeToString(owner[:])+`", "topic": "`+hex.EncodeToString(topic)+`", "manifest": "`+manifest+`"}},
-	  {"name": "page", "ref": "`+page+`", "redundancy": 2, "batch": "`+long+`"}]}`), 0o600)
+	  {"name": "page", "ref": "`+page+`", "redundancy": 2, "batch": "`+long+`", "note": "the page"}]}`), 0o600)
 	os.WriteFile(store, []byte(`{"keep": 1, "name": "store", "batch": "`+short+`", "items": [
 	  {"name": "tree", "ref": "`+tree+`"},
 	  {"name": "chunk", "chunk": "`+ch.Address().String()+`"}]}`), 0o644)
@@ -147,8 +147,8 @@ func TestRotate(t *testing.T) {
 			t.Errorf("%s: batch %s, items %+v", l.Name, again.Batch, again.Items)
 		}
 	}
-	if again, _ := keeplist.Load(ls[0].Path); again.Items[1].Redundancy != 2 {
-		t.Errorf("the page lost its redundancy")
+	if again, _ := keeplist.Load(ls[0].Path); again.Items[1].Redundancy != 2 || again.Note != "why we keep it" || again.Items[1].Note != "the page" {
+		t.Errorf("the rewritten list lost its redundancy or notes: %+v", again)
 	}
 	if fi, _ := os.Stat(ls[0].Path); fi.Mode().Perm() != 0o600 {
 		t.Errorf("site.json mode %v", fi.Mode().Perm())

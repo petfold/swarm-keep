@@ -34,6 +34,7 @@ const DefaultWarn = 14 * 24 * time.Hour
 type List struct {
 	Keep     int       `json:"keep"`
 	Name     string    `json:"name"`
+	Note     string    `json:"note,omitempty"`
 	Batch    string    `json:"batch,omitempty"`
 	Versions *Versions `json:"versions,omitempty"`
 	Warn     string    `json:"warn,omitempty"`
